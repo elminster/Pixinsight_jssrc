@@ -32,6 +32,7 @@
 #include "KoalaUtils.js"
 #include "SendMessageToIMessage.js"
 #include "SendMessageToTelegram.js"
+#include "SendMessageToPushover.js" //add for pushover
 
 
 #define TITLE "Send Image To Phone"
@@ -41,6 +42,7 @@
 var PLATFORMS = {
   TELEGRAM: 1,
   IMESSAGE: 2,
+  PUSHOVER: 3, //add for pushover
 };
 
 if (typeof SendMessageToPhoneConstants === 'undefined') {
@@ -52,41 +54,54 @@ if (typeof SendMessageToPhoneConstants === 'undefined') {
     IMESSAGE_RECIPIENT_KEY: 'SendMessageToPhone/imessageRecipient',
     DO_STRETCH_KEY: 'SendMessageToPhone/doStretch',
     LINKED_KEY: 'SendMessageToPhone/linked',
+    PUSHOVER_APP_TOKEN: 'SendMessageToPhone/pushoverAppToken', //added for pushover
+    PUSHOVER_USER_KEY: 'SendMessageToPhone/pushoverUserKey', //added for pushover
   };
 }
 
 // ==== Settings handling ====
 
 function loadPhoneSettings() {
-      return {
-    platform:
-      Settings.read(
-        SendMessageToPhoneConstants.PHONE_PLATFORM_KEY,
-        DataType_Int32
-      ) || PLATFORMS.TELEGRAM,
-    telegramBotToken:
-      Settings.read(
-        SendMessageToPhoneConstants.TELEGRAM_TOKEN_KEY,
-        DataType_UCString
-      ) || '',
-    telegramChatId: (function () {
-      var v = Settings.read(
-        SendMessageToPhoneConstants.TELEGRAM_CHAT_ID_KEY,
-        DataType_UCString
-      );
-      return typeof v === 'undefined' ? 0 : v;
-    })(),
-    message:
-      Settings.read(
-        SendMessageToPhoneConstants.MESSAGE_KEY,
-        DataType_UCString
-      ) || ':)',
-    imessageRecipient:
-      Settings.read(
-        SendMessageToPhoneConstants.IMESSAGE_RECIPIENT_KEY,
-        DataType_UCString
-      ) || '',
-  };
+    return {
+        platform:
+            Settings.read(
+                SendMessageToPhoneConstants.PHONE_PLATFORM_KEY,
+                DataType_Int32
+            ) || PLATFORMS.TELEGRAM,
+        telegramBotToken:
+            Settings.read(
+                SendMessageToPhoneConstants.TELEGRAM_TOKEN_KEY,
+                DataType_UCString
+            ) || '',
+        telegramChatId: (function () {
+            var v = Settings.read(
+                SendMessageToPhoneConstants.TELEGRAM_CHAT_ID_KEY,
+                DataType_UCString
+            );
+            return typeof v === 'undefined' ? 0 : v;
+        })(),
+        message:
+            Settings.read(
+                SendMessageToPhoneConstants.MESSAGE_KEY,
+                DataType_UCString
+            ) || ':)',
+        imessageRecipient:
+            Settings.read(
+                SendMessageToPhoneConstants.IMESSAGE_RECIPIENT_KEY,
+                DataType_UCString
+            ) || '',
+        pushoverUserKey://add for pushover
+            Settings.read(//add for pushover
+                SendMessageToPhoneConstants.PUSHOVER_USER_KEY,//add for pushover
+                DataType_UCString//add for pushover
+            ) || '',
+        pushoverAppToken://add for pushover
+            Settings.read(//add for pushover
+                SendMessageToPhoneConstants.PUSHOVER_APP_TOKEN,//add for pushover
+                DataType_UCString
+            ) || '',
+ 
+    };
 }
 
 function savePhoneSettings(data) {
@@ -98,6 +113,8 @@ function savePhoneSettings(data) {
   Settings.write(SendMessageToPhoneConstants.IMESSAGE_RECIPIENT_KEY, DataType_UCString, data.imessageRecipient);
   Settings.write(SendMessageToPhoneConstants.DO_STRETCH_KEY, DataType_Boolean, data.doStretch);
   Settings.write(SendMessageToPhoneConstants.LINKED_KEY, DataType_Boolean, data.linked);
+  Settings.write(SendMessageToPhoneConstants.PUSHOVER_APP_TOKEN, DataType_UCString, data.pushoverAppToken);
+  Settings.write(SendMessageToPhoneConstants.PUSHOVER_USER_KEY, DataType_UCString, data.pushoverUserKey);
 }
 
 function resetPhoneSettings() {
@@ -109,6 +126,8 @@ function resetPhoneSettings() {
   Settings.remove(SendMessageToPhoneConstants.IMESSAGE_RECIPIENT_KEY);
   Settings.remove(SendMessageToPhoneConstants.DO_STRETCH_KEY);
   Settings.remove(SendMessageToPhoneConstants.LINKED_KEY);
+  Settings.remove(SendMessageToPhoneConstants.PUSHOVER_APP_TOKEN);
+  Settings.remove(SendMessageToPhoneConstants.PUSHOVER_USER_KEY);
 }
 
 function sendMessage(
@@ -116,23 +135,30 @@ function sendMessage(
   telegramToken,
   telegramChatId,
   imessageRecipient,
+  pushoverAppToken,//add for pushover
+  pushoverUserKey,//add for pushover
   message
 ) {
 
- if (platform === PLATFORMS.TELEGRAM) {
-    sendMessageToTelegram(
-      telegramToken,
-      telegramChatId,
-      message
-    );
-  } else if (platform === PLATFORMS.IMESSAGE) {
-    sendMessageToIMessage(
-      imessageRecipient,
-      message
-    );
-  } else {
-    printError('Please configure platform in the SendMessageToPhone script');
-  }
+    if (platform === PLATFORMS.TELEGRAM) {
+        sendMessageToTelegram(
+            telegramToken,
+            telegramChatId,
+            message
+        );
+    } else if (platform === PLATFORMS.IMESSAGE) {
+        sendMessageToIMessage(
+            imessageRecipient,
+            message
+        );
+    } else if (platform === PLATFORMS.PUSHOVER) {   //add for pushover
+        sendMessageToPushover(                      //add for pushover
+            pushoverAppToken,                       //add for pushover
+            pushoverUserKey                         //add for pushover
+        );
+    } else {
+        printError('Please configure platform in the SendMessageToPhone script');
+    }
 }
 
 function sendImage(
@@ -141,6 +167,8 @@ function sendImage(
   telegramToken,
   telegramChatId,
   imessageRecipient,
+  pushoverAppToken,//add for pushover
+  pushoverUserKey,//add for pushover
   message,
   doStretch,  // Added doStretch
   linked      // Added linked
@@ -161,6 +189,16 @@ function sendImage(
     processAndSendImageToIMessage(
       targetWindow,
       imessageRecipient, // iMessage recipient
+      message, // Message text (shared for both platforms)
+      doStretch, // Pass doStretch
+      linked // Pass linked
+    );
+} else if (platform === PLATFORMS.PUSHOVER) {
+    // For iMessage, use imessageRecipient
+    processAndSendImageToPushover(
+      targetWindow,
+      pushoverAppToken,//add for pushover
+      pushoverUserKey,//add for pushover
       message, // Message text (shared for both platforms)
       doStretch, // Pass doStretch
       linked // Pass linked
@@ -202,12 +240,17 @@ function SendMessageToPhoneDialog() {
   this.imessageRadio.text = 'iMessage';
   this.imessageRadio.checked = savedConfig.platform === PLATFORMS.IMESSAGE;
 
+  this.pushoverRadio = new RadioButton(this.platformGroupBox);//add for pushover
+  this.pushoverRadio.text = 'Pushover';//add for pushover
+  this.pushoverRadio.checked = savedConfig.platform === PLATFORMS.PUSHOVER;//add for pushover
+
   if (CoreApplication.platform != 'macOS') {
     this.imessageRadio.enabled = false;
   }
 
   this.platformGroupBox.sizer.add(this.telegramRadio);
   this.platformGroupBox.sizer.add(this.imessageRadio);
+  this.platformGroupBox.sizer.add(this.pushoverRadio);//add for pushover
   this.sizer.add(this.platformGroupBox);
 
   // === Telegram Configuration ===
@@ -261,6 +304,50 @@ function SendMessageToPhoneDialog() {
   this.telegramGroupBox.sizer.add(telegramChatIdSizer);
 
   this.sizer.add(this.telegramGroupBox);
+
+// === Pushover Configuration ===
+this.pushoverGroupBox = new GroupBox(this);
+this.pushoverGroupBox.title = 'Pushover Configuration';
+this.pushoverGroupBox.sizer = new VerticalSizer();
+this.pushoverGroupBox.sizer.margin = 6;
+this.pushoverGroupBox.sizer.spacing = 4;
+
+var pushoverTokenSizer = new HorizontalSizer();
+this.pushoverTokenLabel = new Label(this.pushoverGroupBox);
+this.pushoverTokenLabel.text = 'Pushover App Token:';
+this.pushoverTokenLabel.minWidth = labelWidth;
+this.pushoverTokenLabel.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+
+this.pushoverTokenInput = new Edit(this.pushoverGroupBox);
+this.pushoverTokenInput.text = savedConfig.pushoverAppToken 
+//this.pushoverTokenInput.setFixedWidth(350);
+
+
+pushoverTokenSizer.spacing = 4;
+pushoverTokenSizer.add(this.pushoverTokenLabel);
+pushoverTokenSizer.add(this.pushoverTokenInput, 100);
+this.pushoverGroupBox.sizer.add(pushoverTokenSizer);
+
+// Pushover User KeyInput
+var pushoverUserKEYSizer = new HorizontalSizer();
+this.pushoverUserKEYLabel = new Label(this.pushoverGroupBox);
+this.pushoverUserKEYLabel.text = 'User Key:';
+this.pushoverUserKEYLabel.minWidth = labelWidth;
+this.pushoverUserKEYLabel.textAlignment = TextAlign_Right | TextAlign_VertCenter;
+
+this.pushoverUserKEYInput = new Edit(this.pushoverGroupBox);
+this.pushoverUserKEYInput.text = savedConfig.pushoverUserKey|| '';
+
+this.telegramChatIdInput.label.visible = false;
+this.pushoverUserKEYInput.setFixedWidth(350);
+
+pushoverUserKEYSizer.spacing = 4;
+pushoverUserKEYSizer.add(this.pushoverUserKEYLabel);
+pushoverUserKEYSizer.add(this.pushoverUserKEYInput, 100);
+
+this.pushoverGroupBox.sizer.add(pushoverUserKEYSizer);
+
+this.sizer.add(this.pushoverGroupBox);
 
 
 // === iMessage Configuration ===
@@ -388,12 +475,16 @@ this.resetButton.icon = this.scaledResource(':/process-interface/reset.png'); //
   // === Platform Toggle ===
   this.updatePlatformVisibility = function () {
     var isTelegram = self.telegramRadio.checked;
+    var isiMessage = self.imessageRadio.checked;
+    var isPushover = self.pushoverRadio.checked;
     self.telegramGroupBox.enabled = isTelegram;
-    self.imessageGroupBox.enabled = !isTelegram;
+    self.imessageGroupBox.enabled = isiMessage;
+    self.pushoverGroupBox.enabled = isPushover;
   };
 
   this.telegramRadio.onCheck = this.updatePlatformVisibility;
   this.imessageRadio.onCheck = this.updatePlatformVisibility;
+  this.pushoverRadio.onCheck = this.updatePlatformVisibility;
   this.updatePlatformVisibility();
 
   // Function to retrieve all field values and return them as an object
@@ -406,6 +497,8 @@ function getFormData() {
     selectedPlatform = PLATFORMS.TELEGRAM;
   } else if (self.imessageRadio.checked) {
     selectedPlatform = PLATFORMS.IMESSAGE;
+} else if (self.pushoverRadio.checked) {
+    selectedPlatform = PLATFORMS.PUSHOVER;
   }
 
   return {
@@ -414,6 +507,8 @@ function getFormData() {
     telegramChatId: self.telegramChatIdInput.value,
     message: self.messageInput.text.trim(),
     imessageRecipient: self.imessageRecipientInput.text.trim(),
+    pushoverAppToken: self.pushoverTokenInput.text.trim(),
+    pushoverUserKey: self.pushoverUserKEYInput.text.trim(),
     doStretch: self.doStretchCheckbox.checked, // Added doStretch parameter
     linked: self.linkedCheckbox.checked // Added linked parameter
   };
@@ -450,6 +545,8 @@ this.runButton.onClick = function () {
     data.telegramBotToken,  // For Telegram
     data.telegramChatId,    // For Telegram
     data.imessageRecipient, // For iMessage
+    data.pushoverAppToken, // For Pushover
+    data.pushoverUserKey, // For Pushover
     data.message,           // Message for both platforms
     data.doStretch,         // doStretch parameter
     data.linked             // linked parameter
@@ -483,12 +580,15 @@ this.resetButton.onClick = function () {
   self.telegramTokenInput.text = '';
   self.telegramChatIdInput.setValue(0);
   self.imessageRecipientInput.text = '';
+  self.pushoverTokenInput.text = '';
+  self.pushoverUserKEYInput.text = '';
   self.messageInput.text = ':)';
   self.doStretchCheckbox.checked = false;
   self.linkedCheckbox.checked = false;
 
   // Reset platform selection to default (Telegram)
   self.telegramRadio.checked = true;
+  self.pushoverRadio.checked = false;
   self.imessageRadio.checked = false;
 
   // Reset settings in the memory
@@ -515,6 +615,8 @@ function main() {
       var platform = parseInt(Parameters.get('platform'), 10);  // Telegram or iMessage
       var token = Parameters.get('telegramBotToken');  // Telegram Bot Token
       var telegramChatId = parseInt(Parameters.get('telegramChatId'), 10);  // Telegram Chat ID
+      var pushoverAppToken = Parameters.get('pushoverAppToken');  // Pushover App Token
+      var pushoverUserKey = Parameters.get('pushoverUserKey');  // Pushover User Key
       var message = Parameters.get('message');  // Message Text
       var imessageRecipient = Parameters.get('imessageRecipient');  // iMessage Recipient
       var doStretch = (Parameters.get('doStretch') || "").trim().toLowerCase() === "true";
@@ -525,6 +627,8 @@ function main() {
         platform,
         token,
         telegramChatId,
+        pushoverAppToken,
+        pushoverUserKey,
         imessageRecipient,
         message,
         doStretch,  // Include the doStretch parameter
