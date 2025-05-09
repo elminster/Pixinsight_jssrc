@@ -39,9 +39,17 @@
 // COPYRIGHT © 2025 Luca Bartek, Roberto Sartori. ALL RIGHTS RESERVED.
 ////////////////////////////////////////////////////////////////////////////
 
-// Global Pushover API Configuration
-const PUSHOVER_APP_TOKEN = 'INSERT YOUR TOKEN HERE';
-const PUSHOVER_USER_KEY = 'INSERT YOUR TOKEN HERE';
+// Pull Credentials from saved config
+var PUSHOVER_SETTINGS_KEY_BASE = 'SendImagePushover/';
+
+var PUSHOVER_APP_TOKEN = Settings.read(
+    PUSHOVER_SETTINGS_KEY_BASE + 'appToken',
+    14
+) + '';
+var PUSHOVER_USER_KEY = Settings.read(
+    PUSHOVER_SETTINGS_KEY_BASE + 'userKEY',
+    14
+) + '';
 
 // Function to send a text message to Pushover
 let sendMessageToPushover = function (title, message, msgpriority) {
