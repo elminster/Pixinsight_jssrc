@@ -52,9 +52,9 @@ function loadPushoverSettings() {
         PUSHOVER_SETTINGS_KEY_BASE + 'userKEY',
         DataType_UCString
     );
-    if (userKEY == -2147483648) {
-        userKEY = Number.NaN;
-    }
+    // if (userKEY == -2147483648) {
+    //     userKEY = Number.NaN;
+    // }
     var doStretch = Settings.read(
         PUSHOVER_SETTINGS_KEY_BASE + 'doStretch',
         DataType_Boolean
